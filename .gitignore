@@ -3,7 +3,7 @@ node_modules/
 .next/
 tsconfig.tsbuildinfo
 
-# Gradle / Java (backend/)
+# Gradle / JVM (backend/)
 build/
 .gradle/
 bin/

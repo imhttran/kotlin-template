@@ -2,6 +2,14 @@
 # Host ports 8080/3000 match the app defaults; Postgres is published on 5433 so
 # it doesn't collide with a local (Homebrew) Postgres already on 5432.
 
+# Pinned because compose otherwise derives the project name from the checkout
+# directory, and that name is what the built images are called. The k8s
+# manifests run `spring-template-api` and `spring-template-frontend` with
+# imagePullPolicy: Never, so a differently-named checkout would build images the
+# cluster can't see, and a rollout would quietly fall back to whatever stale
+# image already carried the expected name.
+name: spring-template
+
 services:
   db:
     image: postgres:16-alpine

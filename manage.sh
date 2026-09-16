@@ -204,7 +204,7 @@ build_all() {
   (cd "$ROOT_DIR/frontend" && npm run build)
 }
 
-# The repo's formatter. Java formatting isn't wired up yet (no formatter plugin
+# The repo's formatter. Kotlin formatting isn't wired up yet (no formatter plugin
 # in the Gradle build), so this covers the JS/TS/CSS/JSON/Markdown side.
 format_code() {
   (cd "$ROOT_DIR" && npx prettier --write . --ignore-path .gitignore)

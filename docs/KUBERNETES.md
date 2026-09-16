@@ -41,6 +41,15 @@ That only works because the images are never pulled — `spring-template-api` an
 is what points the cluster at the local copies; if one is missing the pod fails
 loudly with `ErrImageNeverPull` instead of quietly pulling something else.
 
+Those two names come from compose's project name, which `docker-compose.yml`
+pins with `name: spring-template`. Without the pin compose derives the project
+name from the checkout directory, so the same repo cloned as `kotlin-template`
+would build `kotlin-template-api:latest` — an image nothing here looks for. That
+failure mode is quiet and worse than a missing image: the manifests would keep
+running whichever `spring-template-api` was already in the image store, so a
+rebuild would appear to succeed while the pod never moved. If you rename the
+project, change the pin and the manifests together.
+
 One consequence: both images keep the `latest` tag and pods never pull, so a
 rebuilt image is invisible to a pod that is already running. That is why a code
 change needs `k8s:rebuild`, which rebuilds **and** runs `kubectl rollout restart`.

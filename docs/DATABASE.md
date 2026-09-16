@@ -78,8 +78,14 @@ Tables:
 | `user_devices`  | trusted 2FA devices that skip the login code                |
 | `login_codes`   | pending 2FA codes (expiry, attempts, resends)               |
 
-The `email_queue` column is named `"to"`, which is a reserved word, so queries
-have to quote it.
+Two rules apply to every query in
+`backend/src/main/kotlin/com/example/template/repository/`. `email_queue`'s column
+is named `"to"`, a reserved word, so queries quote it. And the
+`AS "camelCase"` aliases are load-bearing rather than decoration: rows map onto
+the row data classes through their primary constructors, matched by parameter
+name, so an alias that drifts from the property name fails at runtime on that
+column rather than at compile time. The rest of the Kotlin-specific traps are
+listed in [SPRING_MIGRATION.md](SPRING_MIGRATION.md).
 
 Dev seed (`DevAdminSeeder`, only when `NODE_ENV=development`): upserts the dev
 admin (README has the credentials) plus their profile, so it isn't blocked by

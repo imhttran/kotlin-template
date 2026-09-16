@@ -10,13 +10,20 @@ status codes and JSON shapes are unchanged, defined by `frontend/next.config.ts`
 proxy and the ported test suite. The legacy implementation is gone from the tree;
 git history still has it.
 
+That backend was then ported from Java to Kotlin in place: same packages, same
+class names, same 39 tests, and the same frozen contract. `backend/src` holds no
+Java now, and git history has it. The Kotlin-specific decisions and traps are
+part of this document rather than a second one, because the reasons the Java
+code was shaped that way mostly survive the translation.
+
 ## Decisions
 
 - **Gradle (Kotlin DSL) with a committed wrapper** (9.7.1) — no system Gradle, so
   the build is the same in CI, in Docker, and on a laptop. The wrapper jar is
   committed on purpose; `.gitignore` is written not to swallow it.
-- **Java 21 toolchain** — the build declares `languageVersion = 21`, so the JDK
-  that launches Gradle (25 here) doesn't have to be the one that compiles. The
+- **Java 21 toolchain, Kotlin as the source language** — the build declares
+  `jvmToolchain(21)`, so the JDK that launches Gradle (25 here) doesn't have to
+  be the one that compiles, and the Kotlin compiler targets 21 either way. The
   Dockerfile builds on a JDK 21 image for the same reason.
 - **`JdbcClient` raw SQL, not JPA or jOOQ** — the backend it replaces was sqlx
   with hand-written SQL, so keeping the queries literal kept the port mechanical
@@ -42,6 +49,41 @@ git history still has it.
 - **Flyway, not the old hand-rolled runner** — the schema and its history are
   documented in [DATABASE.md](DATABASE.md).
 
+## Kotlin port
+
+The Java-to-Kotlin pass happened in place too: same packages, same class names,
+same 39 tests. These are the decisions inside it that are worth not undoing.
+
+- **Kotlin 2.2.21, with the BOM's `kotlin.version` overridden to match** — Spring
+  Boot 3.5.3 manages `kotlin-stdlib` and `kotlin-reflect` at the version it was
+  tested against (1.9.25), while Gradle 9 needs a Kotlin plugin of at least
+  2.2.20. Setting `extra["kotlin.version"]` to the plugin's version keeps the
+  compiler, stdlib and reflect on one version instead of resolving a mismatch.
+- **`kotlin("plugin.spring")`, not hand-written `open`** — Kotlin classes are
+  final by default, and Spring has to subclass `@Configuration`, `@Component` and
+  `@Service` classes. The plugin's allopen preset handles that, so removing the
+  plugin breaks context startup rather than failing at compile time.
+- **`kotlin-reflect` and `jackson-module-kotlin` are load-bearing** — reflect is
+  what lets a `JdbcClient` row mapper resolve a Kotlin primary constructor, and
+  what gives Spring the parameter names it needs for config binding
+  (`-java-parameters` is set as a second, cheaper source for those names). The
+  Jackson module is what lets the request-body classes be filled from their
+  defaults. Both look like conveniences and neither is.
+- **Nullable types instead of `Optional`** — repository lookups return `T?`, so
+  the ported `orElse(null)` and `orElseThrow(...)` became `?:` and `?: throw`.
+  `Optional` is gone from the codebase.
+- **`AppProperties` defaults every property and repairs blanks in
+  `@PostConstruct`** — normalise still runs after binding (binding an empty env
+  var must not clobber the dev fallback), and the production `JWT_SECRET` guard
+  still fires there. One deliberate change: `smtpPort` and `maxAttempts` are
+  `Int`, not `Integer`, so an _empty_ `SMTP_PORT` or `MAX_ATTEMPTS` is now a
+  binding error instead of falling back to the default. Nothing in the repo sets
+  either one empty, and the alternative was a nullable knob leaking into every
+  caller.
+- **`-Xjsr305=strict`** — Spring's `@Nullable` becomes a real nullable type, so
+  the `HandlerMethodArgumentResolver` override takes `ModelAndViewContainer?` and
+  `WebDataBinderFactory?` instead of leaving anyone to guess.
+
 ## Class map
 
 | Legacy (removed)                | Spring (backend/)                             |
@@ -59,6 +101,10 @@ git history still has it.
 | `AppError` / `respond` / `fail` | `Api` helpers + `@RestControllerAdvice`       |
 | `requireAuth` extractor         | `AuthUserArgumentResolver`                    |
 | renewed-token middleware        | `SessionRenewalFilter`                        |
+
+The right-hand column names the Spring classes the backend uses today. The table
+records which stack each responsibility came from, not which language it is
+written in.
 
 ## Parity gotchas (the hard parts)
 
@@ -95,3 +141,27 @@ test; changing one breaks behavior the contract guarantees.
    `DateTime<Utc>` did.
 7. **The `"to"` column is quoted** — `to` is reserved in SQL, so `email_queue`
    queries write `"to"`.
+8. **Request-body classes must default every field** — the lenient decoder
+   falls back to a no-arg constructor, and Kotlin only synthesizes one when
+   every primary-constructor parameter has a default. Drop a `= ""` from a body
+   class and malformed-input handling changes from a 400 to a 500.
+9. **`@JsonSetter(nulls = Nulls.SKIP)` is what makes `null` mean "absent"** — an
+   explicit JSON `null` is skipped so the field keeps its default. Drop the
+   annotation and a non-null Kotlin parameter rejects that null, the decode
+   fails, and `Api.decode` falls back to a _completely empty_ body rather than
+   ignoring the one field — so the symptom is a wrong validation message, not a
+   crash. The `field:` use-site target on these annotations is cosmetic, the
+   annotation itself is not.
+10. **Row mapping keys off the column aliases** — `JdbcClient.query(Class)`
+    resolves the Kotlin primary constructor and matches its parameter names to
+    the aliased columns, so every `AS "camelCase"` in the SQL is part of the
+    contract. It also depends on `kotlin-reflect` staying on the runtime
+    classpath, and it is why repositories are the one place a column alias is
+    worth naming explicitly.
+11. **`Api` has its own `ObjectMapper`** — the request decoder is deliberately
+    not Spring's mapper, so the Kotlin module has to be registered on that one
+    too. Responses going through Spring's auto-configured mapper is not enough.
+12. **Path variables are named explicitly** — `@PathVariable("id")` rather than
+    bare `@PathVariable`. It costs nothing and removes a dependency on
+    Kotlin parameter-name discovery at the one place a wrong name is a runtime
+    500 instead of a compile error.
