@@ -27,17 +27,33 @@ LOG_BASE=/tmp/spring-template
 
 # ---- database ----
 
+# The value of NAME in a .env-style file, unquoted, or empty when the file or
+# the line is missing. One implementation of the KEY=value parsing so the two
+# lookups below can't drift.
+env_file_value() {
+  local file="$ROOT_DIR/$1" name="$2"
+  [ -f "$file" ] || return 0
+  grep -E "^${name}=" "$file" | tail -1 | cut -d= -f2- | tr -d '"' || true
+}
+
 # Personal root .env wins, .env.dev fills in for development — the same
-# precedence the backend's env loader applies. Used by the Postgres check,
-# database reset, and re-seed commands.
+# precedence the backend's env loader applies, per variable. Used by the
+# Postgres check, database reset, and re-seed commands.
 load_db_url() {
-  local url="postgres://postgres:postgres@localhost:5432/template-db?sslmode=disable"
-  if [ -f "$ROOT_DIR/.env" ]; then
-    url=$(grep -E '^DATABASE_URL=' "$ROOT_DIR/.env" | tail -1 | cut -d= -f2- | tr -d '"' || true)
-  fi
-  if [ ! -f "$ROOT_DIR/.env" ] && [ -f "$ROOT_DIR/.env.dev" ]; then
-    url=$(grep -E '^DATABASE_URL=' "$ROOT_DIR/.env.dev" | tail -1 | cut -d= -f2- | tr -d '"')
-  fi
+  local url
+  url=$(env_file_value .env DATABASE_URL)
+  if [ -z "$url" ]; then url=$(env_file_value .env.dev DATABASE_URL); fi
+  if [ -z "$url" ]; then url="postgres://postgres:postgres@localhost:5432/template-db?sslmode=disable"; fi
+  echo "$url"
+}
+
+# TEST_DATABASE_URL for the integration tests: the real environment variable
+# first, then .env, then .env.dev. Empty when none of them define it, which is
+# what leaves the 12 DB-backed tests skipped.
+load_test_db_url() {
+  local url
+  url=$(env_file_value .env TEST_DATABASE_URL)
+  if [ -z "$url" ]; then url=$(env_file_value .env.dev TEST_DATABASE_URL); fi
   echo "$url"
 }
 
@@ -174,14 +190,18 @@ first_time_setup() {
   (cd "$ROOT_DIR/$BACKEND_DIR" && ./gradlew build) || return 1
   echo "→ database: migrations apply automatically on backend start."
   echo "  Requires a running PostgreSQL (see DATABASE_URL in .env.example)."
-  echo -e "${GREEN}Setup complete. Start everything with option 1.${NC}"
+  echo -e "${GREEN}Setup complete. Start everything with ./manage.sh up.${NC}"
 }
 
-# Backend tests (./gradlew test) + frontend build. Integration tests need
-# TEST_DATABASE_URL; without it they skip and the unit tests still run.
+# Backend tests (./gradlew test) + frontend build. The DB-backed integration
+# tests need TEST_DATABASE_URL, taken from the environment or from .env / .env.dev;
+# without it they skip and the unit tests still run.
 run_tests() {
-  if [ -n "${TEST_DATABASE_URL:-}" ]; then
-    (cd "$ROOT_DIR/$BACKEND_DIR" && TEST_DATABASE_URL="$TEST_DATABASE_URL" ./gradlew test) || return 1
+  local url="${TEST_DATABASE_URL:-}"
+  if [ -z "$url" ]; then url=$(load_test_db_url); fi
+  if [ -n "$url" ]; then
+    echo "→ integration tests against $url"
+    (cd "$ROOT_DIR/$BACKEND_DIR" && TEST_DATABASE_URL="$url" ./gradlew test) || return 1
   else
     echo -e "${YELLOW}TEST_DATABASE_URL not set — unit-only tests (integration tests skip).${NC}"
     (cd "$ROOT_DIR/$BACKEND_DIR" && ./gradlew test) || return 1

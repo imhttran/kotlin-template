@@ -21,10 +21,12 @@ import org.springframework.core.env.StandardEnvironment
  *   it could never be seen, since it is itself what sets NODE_ENV);
  * - files are resolved from the working directory, then the parent.
  *
- * Registered in
- * `META-INF/spring/org.springframework.boot.env.EnvironmentPostProcessor.imports`.
- * Values are added as property sources just below the real environment, so
- * precedence is: environment → .env → .env.dev → application.yml defaults.
+ * Registered under
+ * `org.springframework.boot.env.EnvironmentPostProcessor` in
+ * `META-INF/spring.factories`, which is the key Spring Boot reads for this
+ * interface. Values are added as property sources just below the real
+ * environment, so precedence is: environment → .env → .env.dev → application.yml
+ * defaults.
  */
 class EnvFiles : EnvironmentPostProcessor {
 

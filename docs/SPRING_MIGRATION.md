@@ -165,3 +165,12 @@ test; changing one breaks behavior the contract guarantees.
     bare `@PathVariable`. It costs nothing and removes a dependency on
     Kotlin parameter-name discovery at the one place a wrong name is a runtime
     500 instead of a compile error.
+13. **`EnvFiles` is registered in `spring.factories`, not in a `.imports` file** —
+    Spring Boot reads `EnvironmentPostProcessor` implementations from the
+    `org.springframework.boot.env.EnvironmentPostProcessor` key in
+    `META-INF/spring.factories`. A `META-INF/spring/<type>.imports` file, which is
+    the mechanism auto-configuration and friends use, is ignored silently for this
+    interface: no error, no warning, and the `.env` files simply never load. The
+    Java version shipped exactly that mistake, so `.env` support had never actually
+    worked until it was corrected. `EnvironmentPostProcessorsFactory` in Spring
+    Boot 3.5 has `fromSpringFactories` and no `fromImports` at all.
