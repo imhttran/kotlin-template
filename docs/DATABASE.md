@@ -79,7 +79,7 @@ Tables:
 | `login_codes`   | pending 2FA codes (expiry, attempts, resends)               |
 
 Two rules apply to every query in
-`backend/src/main/kotlin/com/example/template/repository/`. `email_queue`'s column
+`backend/src/main/kotlin/com/htt/template/repository/`. `email_queue`'s column
 is named `"to"`, a reserved word, so queries quote it. And the
 `AS "camelCase"` aliases are load-bearing rather than decoration: rows map onto
 the row data classes through their primary constructors, matched by parameter
@@ -93,16 +93,16 @@ onboarding gates.
 
 ## Day-to-day operations
 
-| Task               | Command                                                                                 |
-| ------------------ | --------------------------------------------------------------------------------------- |
-| Status             | `pg_isready -h localhost` or `./manage.sh` → 5                                          |
-| Reset **all** data | `./manage.sh` → 9 (drops and recreates the `public` schema)                             |
-| Manual reset       | `psql "$DATABASE_URL" -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'`           |
-| Re-seed            | `./manage.sh` → 11 (drop schema, restart the backend so Flyway re-applies and re-seeds) |
-| Look around        | `psql "template-db" -U postgres` → `\dt`, `\d users`                                    |
-| Promote a user     | `./manage.sh` → 8 (`java -jar build/libs/app.jar set-role`)                             |
+| Task               | Command                                                                                      |
+| ------------------ | -------------------------------------------------------------------------------------------- |
+| Status             | `pg_isready -h localhost` or `./manage.sh status`                                            |
+| Reset **all** data | `./manage.sh db:reset` (drops and recreates the `public` schema)                             |
+| Manual reset       | `psql "$DATABASE_URL" -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'`                |
+| Re-seed            | `./manage.sh db:reseed` (drop schema, restart the backend so Flyway re-applies and re-seeds) |
+| Look around        | `psql "template-db" -U postgres` → `\dt`, `\d users`                                         |
+| Promote a user     | `./manage.sh role <email> <role>` (`java -jar build/libs/app.jar set-role`)                  |
 
-`manage.sh` option 9 asks for lowercase `yes` since `DROP SCHEMA public
+`db:reset` asks for lowercase `yes` since `DROP SCHEMA public
 CASCADE` destroys all data, including the Flyway history — the next boot
 re-applies every migration. It reads the same `DATABASE_URL` chain described
 above.
@@ -121,7 +121,7 @@ TEST_DATABASE_URL="postgres://postgres:postgres@localhost:5432/template-db-test?
 The test context points `app.database-url` at `TEST_DATABASE_URL` and boots
 Flyway against it, so the schema is applied on the first run. Tests create
 unique-email users per run and clean up after themselves, so they never reset
-the database. `./manage.sh` → 6 passes `TEST_DATABASE_URL` through when it's set
+the database. `./manage.sh test` passes `TEST_DATABASE_URL` through when it's set
 in your environment.
 
 ## Production

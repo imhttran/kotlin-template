@@ -50,23 +50,23 @@ open http://template.localhost
 
 ### Entry points
 
-`make` and the interactive menu are both thin wrappers over `./manage.sh`, which
-owns the steps — so there is one implementation of each:
+`make` is a thin wrapper over `./manage.sh`, which owns the steps — so there is
+one implementation of each:
 
-| Task     | Docker (primary)                          | Native                          |
-| -------- | ----------------------------------------- | ------------------------------- |
-| start    | `make up` (`./manage.sh compose:up`)      | `make native-up` (menu [1])     |
-| stop     | `make down`                               | `make native-down` (menu [4])   |
-| logs     | `make logs WHAT=api`                      | `make native-logs WHAT=backend` |
-| status   | `make status` — reports either path       | menu [5]                        |
-| tests    | `make test`                               | menu [6]                        |
-| build    | `make build` (API jar + frontend bundle)  |                                 |
-| db reset | `make db-reset YES=1`                     | menu [9]                        |
-| re-seed  | `make db-reseed YES=1`                    | menu [11]                       |
-| role     | `make role EMAIL=you@mail.com ROLE=admin` | menu [8]                        |
+| Task     | Docker (primary)                          | Native                                  |
+| -------- | ----------------------------------------- | --------------------------------------- |
+| start    | `make up` (`./manage.sh compose:up`)      | `make native-up` (`./manage.sh up`)     |
+| stop     | `make down`                               | `make native-down` (`./manage.sh down`) |
+| logs     | `make logs WHAT=api`                      | `make native-logs WHAT=backend`         |
+| status   | `make status` — reports either path       | `./manage.sh status`                    |
+| tests    | `make test`                               | `./manage.sh test`                      |
+| build    | `make build` (API jar + frontend bundle)  | `./manage.sh build`                     |
+| db reset | `make db-reset YES=1`                     | `./manage.sh db:reset`                  |
+| re-seed  | `make db-reseed YES=1`                    | `./manage.sh db:reseed`                 |
+| role     | `make role EMAIL=you@mail.com ROLE=admin` | `./manage.sh role <email> <role>`       |
 
 `make help` and `./manage.sh help` list every target and subcommand;
-`./manage.sh` with no argument opens the menu. Kubernetes has its own targets
+`./manage.sh` with no argument prints the same list as `help`. Kubernetes has its own targets
 (`make k8s-up`, `make k8s-rebuild`, `make k8s-status`, …) — see
 **[docs/KUBERNETES.md](docs/KUBERNETES.md)**.
 
@@ -88,7 +88,7 @@ backend to Spring port, and the later Java to Kotlin port.
 
 ## Tests
 
-`make test` (or `./manage.sh test`, or menu [6]) runs the backend tests
+`make test` (or `./manage.sh test`) runs the backend tests
 (`./gradlew test`) plus the frontend build. 39 tests total; the 12 DB-backed
 integration tests need `TEST_DATABASE_URL` and skip without it, leaving the 27
 unit tests. See **[docs/DATABASE.md](docs/DATABASE.md)** for the test database.
@@ -105,7 +105,7 @@ make role EMAIL=you@email.com ROLE=admin
 ## Backend
 
 Kotlin 2.2 on a Java 21 toolchain, one Gradle module, source in
-`backend/src/main/kotlin/com/example/template/`:
+`backend/src/main/kotlin/com/htt/template/`:
 
 | Package      | What's in it                                                      |
 | ------------ | ----------------------------------------------------------------- |
@@ -131,7 +131,7 @@ trip, are in **[docs/SPRING_MIGRATION.md](docs/SPRING_MIGRATION.md)**.
 ## API
 
 19 endpoints under `/api/*` — see the controllers in
-`backend/src/main/kotlin/com/example/template/api/`:
+`backend/src/main/kotlin/com/htt/template/api/`:
 
 - **Public auth** (8): signup, verify, resend-verification, forgot-password,
   reset-password, login, login/verify (2FA code), login/resend (2FA code)

@@ -7,7 +7,7 @@ plugins {
     id("io.spring.dependency-management") version "1.1.7"
 }
 
-group = "com.example"
+group = "com.htt"
 version = "0.0.1-SNAPSHOT"
 
 repositories {
@@ -56,7 +56,6 @@ dependencies {
     implementation("org.bouncycastle:bcprov-jdk18on:1.80")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
@@ -68,7 +67,7 @@ tasks.withType<Test> {
 tasks.bootJar {
     archiveFileName.set("app.jar")
     // Kotlin's `main` lands on a synthesized <File>Kt class, so name it.
-    mainClass.set("com.example.template.TemplateApplicationKt")
+    mainClass.set("com.htt.template.TemplateApplicationKt")
 }
 
 tasks.jar {

@@ -10,4 +10,4 @@ echo "→ frontend: typecheck"
 (cd frontend && npx tsc --noEmit)
 
 echo "→ prettier check"
-npx prettier --check . --ignore-path .gitignore
+(cd frontend && npm run format:check)

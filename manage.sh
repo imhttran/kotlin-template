@@ -188,8 +188,8 @@ run_tests() {
   fi
 }
 
-# What menu option 6 and `./manage.sh test` run: the backend suite, then the
-# frontend build (which typechecks it as a side effect).
+# What `./manage.sh test` runs: the backend suite, then the frontend build
+# (which typechecks it as a side effect).
 run_checks() {
   run_tests || return 1
   require_frontend_deps || return 1
@@ -205,9 +205,12 @@ build_all() {
 }
 
 # The repo's formatter. Kotlin formatting isn't wired up yet (no formatter plugin
-# in the Gradle build), so this covers the JS/TS/CSS/JSON/Markdown side.
+# in the Gradle build), so this covers the JS/TS/CSS/JSON/Markdown side. Prettier
+# lives in the frontend package, the only JS/TS in the repo, and runs from there
+# over the whole tree.
 format_code() {
-  (cd "$ROOT_DIR" && npx prettier --write . --ignore-path .gitignore)
+  require_frontend_deps || return 1
+  (cd "$ROOT_DIR/frontend" && npm run format)
 }
 
 # Build the jar, then run the CLI: it reads DATABASE_URL directly and ignores
@@ -215,13 +218,6 @@ format_code() {
 set_user_role_for() {
   local email="$1" role="$2"
   (cd "$ROOT_DIR/$BACKEND_DIR" && ./gradlew bootJar -q && java -jar build/libs/app.jar set-role "$email" "$role") || return 1
-}
-
-# Menu entry point: prompts for what the subcommand takes as arguments.
-set_user_role() {
-  read -r -p "Email: " email
-  read -r -p "Role (client/staff/admin): " role
-  set_user_role_for "$email" "$role"
 }
 
 # Destructive steps ask for a typed 'yes'; --yes skips the prompt so a script
@@ -255,23 +251,9 @@ re_seed() {
   echo -e "${GREEN}Database re-seeded.${NC}"
 }
 
-# Tail a service log. Ctrl-C to stop following. No argument prompts (the menu's
-# behaviour); otherwise backend|frontend|both.
+# Tail a service log. Ctrl-C to stop following. No argument follows both.
 view_logs() {
-  local which="${1:-}"
-  if [ -z "$which" ]; then
-    echo "Which log?"
-    echo "  b) Backend"
-    echo "  f) Frontend"
-    echo "  a) Both"
-    read -r -p "Choose: " which
-    case "$which" in
-      b) which=backend ;;
-      f) which=frontend ;;
-      a) which=both ;;
-      *) echo -e "${YELLOW}Unknown option${NC}"; return 1 ;;
-    esac
-  fi
+  local which="${1:-both}"
   case "$which" in
     backend) tail -f "$LOG_BASE-$BACKEND_DIR.log" ;;
     frontend) tail -f "$LOG_BASE-frontend.log" ;;
@@ -442,65 +424,15 @@ k8s_reset() {
   echo -e "${GREEN}Namespace deleted. ./manage.sh k8s:up recreates it empty.${NC}"
 }
 
-# ---- menu ----
-
-interactive_menu() {
-  while true; do
-    echo ""
-    echo "==== Spring Boot + Next.js template ===="
-    echo " 1) Start All (Backend + Frontend)"
-    echo " 2) Start Backend only"
-    echo " 3) Start Frontend only"
-    echo " 4) Stop All"
-    echo " 5) Status"
-    echo " 6) Run Tests (backend gradle test + frontend build)"
-    echo " 7) First-Time Setup (install deps)"
-    echo " 8) Set User Role"
-    echo " 9) Reset Database (destructive)"
-    echo " 10) View Logs (tail)"
-    echo " 11) Re-seed (reset DB + restart backend)"
-    echo " 12) K8s: Deploy (apply + wait for rollout)"
-    echo " 13) K8s: Rebuild images + restart"
-    echo " 14) K8s: Status"
-    echo " 15) K8s: Logs (tail)"
-    echo " 16) K8s: Stop (keeps data)"
-    echo " 17) K8s: Reset (destructive)"
-    echo " q) Quit"
-    echo " (no argument also prints the subcommand list: ./manage.sh help)"
-    read -r -p "Choose: " choice
-    case "$choice" in
-      1) start_all ;;
-      2) start_backend ;;
-      3) start_frontend ;;
-      4) stop_all ;;
-      5) show_status ;;
-      6) run_checks || echo -e "${RED}Checks failed (see above)${NC}" ;;
-      7) first_time_setup ;;
-      8) set_user_role ;;
-      9) reset_database ;;
-      10) view_logs ;;
-      11) re_seed ;;
-      12) k8s_up || echo -e "${RED}Deploy failed (see above)${NC}" ;;
-      13) k8s_rebuild ;;
-      14) k8s_status ;;
-      15) k8s_logs ;;
-      16) k8s_down ;;
-      17) k8s_reset ;;
-      q) break ;;
-      *) echo -e "${YELLOW}Unknown option${NC}" ;;
-    esac
-  done
-}
-
 # ---- subcommands ----
 
 usage() {
   cat <<'USAGE'
 Spring Boot + Next.js template.
 
-  ./manage.sh                       interactive menu
+  ./manage.sh                       this list
 
-Docker — the primary path (no local Java, Node or Postgres needed)
+Docker — the primary path (no local JDK, Node or Postgres needed)
   compose:up                        start the stack detached
   compose:down                      stop it (the database volume is kept)
   compose:build                     rebuild the images after a code change
@@ -542,7 +474,7 @@ step() {
 }
 
 case "${1:-}" in
-  "")             interactive_menu ;;
+  "")             usage ;;
   help|-h|--help) usage ;;
   up)             step start_all ;;
   backend)        step start_backend ;;

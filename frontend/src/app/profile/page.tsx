@@ -2,7 +2,7 @@
 
 import { type FormEvent } from "react";
 import { submitAuthedForm } from "@/lib/api";
-import { COUNTRIES, US_STATES } from "@/lib/usStates";
+import { US_STATES } from "@/lib/usStates";
 import { PageTitle } from "@/components/PageTitle";
 
 export default function ProfilePage() {
@@ -90,11 +90,7 @@ export default function ProfilePage() {
         <div className="input-group">
           <label htmlFor="country">Country</label>
           <select id="country" name="country" required>
-            {COUNTRIES.map(([code, name]) => (
-              <option key={code} value={code}>
-                {name}
-              </option>
-            ))}
+            <option value="US">United States</option>
           </select>
         </div>
 
