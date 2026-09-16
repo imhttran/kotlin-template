@@ -4,8 +4,9 @@ Everything this project does with PostgreSQL, in one page.
 
 ## Connection
 
-One variable: `DATABASE_URL`. Development has a working default built in, and a
-personal root `.env` or `.env.dev` overrides it.
+One variable: `DATABASE_URL`. Development has a working default built in.
+`.env.dev` ships with the development values and overrides it, and a personal
+root `.env` overrides that.
 
 ```
 postgres://postgres:postgres@localhost:5432/template-db?sslmode=disable

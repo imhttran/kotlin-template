@@ -13,10 +13,13 @@ bin/
 # Service pid files (manage.sh)
 *.pid
 
-# Personal env config (template stays tracked: .env.example)
+# Env config: the two shipped templates are tracked, everything else is yours.
+# A root .env — and any other .env.* you add — stays personal and overrides
+# whatever the tracked files set.
 .env
 .env.*
 !.env.example
+!.env.dev
 
 # macOS
 .DS_Store

@@ -81,6 +81,7 @@ sending them; under compose, Mailpit collects them at http://localhost:8025.
 - **[docs/DATABASE.md](docs/DATABASE.md)** — install Postgres, Flyway schema, reset, tests
 - **[docs/KUBERNETES.md](docs/KUBERNETES.md)** — the Rancher Desktop cluster: images, ingress, commands
 - **`.env.example`** — every config variable
+- **`.env.dev`** — the local development values, read by the backend and by `./manage.sh`
 
 Background, for how the backend got here (each stack replaced rather than run
 alongside): **[docs/SPRING_MIGRATION.md](docs/SPRING_MIGRATION.md)** — the legacy
